@@ -1,0 +1,164 @@
+\documentclass[11pt]{article}
+\usepackage{iwslt15}
+\usepackage{times}
+\usepackage{url}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{forest}
+\usepackage{subcaption}
+\usepackage{textcomp}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{enumitem}
+\setlist{noitemsep}
+
+%\usetikzlibrary{external}
+%\tikzexternalize[optimize=false]
+
+\pgfplotsset{compat=newest}
+\usepgfplotslibrary{groupplots}
+
+\pgfplotsset{try min ticks=6}
+
+\definecolor{bblue}{HTML}{4F81BD}
+\definecolor{rred}{HTML}{C0504D}
+\definecolor{ggreen}{HTML}{9BBB59}
+\definecolor{ppurple}{HTML}{9F4C7C}
+\definecolor{oorange}{HTML}{F08000}
+  
+\emergencystretch 3em
+
+\title{The University of Edinburgh's systems submission to the MT task at IWSLT}
+
+\name{Marcin Junczys-Dowmunt\textsuperscript{1,2}, Alexandra Birch\textsuperscript{1}}
+
+\address{%
+\textsuperscript{1}School of Informatics, University of Edinburgh \\
+\textsuperscript{2}Faculty of Mathematics and Computer Science, Adam Mickiewicz University in Pozna\'{n}\\
+{\tt \normalsize junczys@amu.edu.pl} \;
+{\tt \normalsize a.birch@inf.ed.ac.uk }}
+
+\date{}
+
+\begin{document}
+ \maketitle
+\begin{abstract}
+This paper describes the submission of the University of Edinburgh team to the IWSLT MT task for TED talks. We took part in four translation directions, en-de, de-en, en-fr, and fr-en. The models have been trained with an attentional encoder-decoder model using Nematus, training data filtering and back-translation have been applied for domain-adaptation purposes. 
+\end{abstract}
+
+\section{Introduction}
+This paper describes the submission of the University of Edinburgh team to the IWSLT MT task for TED talks. We submitted translation results for four directions: en-de, de-en, en-fr, and fr-en. 
+The models have been trained with an attentional encoder-decoder neural machine translation model using Nematus \cite{DBLP:conf/wmt/SennrichHB16}. 
+Due to the large amount of admissible parallel and monolingual training data and in order to benefit from domain-adaptation effects, we filtered all data sets towards the task domain. Furthermore back-translation has been applied for to utilize domain-filtered monolingual data. 
+
+
+\section{Training data and data selection}
+
+\subsection{Used corpora}
+
+Due to the addition of the Opensubtitles 2016 corpus and the United Nations Parallel Corpus v1.0, the amount of available parallel training data was a lot larger than in previous years. For the English-German and English-French language pair, we used the corpora listed in Table \ref{corpora1}.
+
+\begin{table}[h]\centering
+ \begin{tabular}{lrr} \toprule
+Corpus & de-en & fr-en \\ \midrule
+WIT3 (in-domain) \cite{cettoloEtAl:EAMT2012} & 0.2M & 0.2M \\ \midrule 
+Commoncrawl \cite{bojar-EtAl:2015:WMT} & 2.3M & 3.2M\\
+Europarl v7 \cite{koehn2005epc} & 1.9M & 2.0M \\
+Giga Fr-En \cite{bojar-EtAl:2015:WMT} & -- & 22.5M \\
+News Commentary v11 \cite{bojar-EtAl:2015:WMT} & 0.2M & 0.2M \\
+Opensubtitles 2016 \cite{LISON16.947} & 13.4M & 33.5M\\ 
+United Nations v1.0 \cite{ZIEMSKI16.1195} & -- & 25.8M \\\bottomrule
+ \end{tabular}
+ \caption{Admissible parallel corpora used for training, with number of segments per language pair}\label{corpora1}
+\end{table}
+
+Additionally monolingual training data from the Commoncrawl \cite{Buck-commoncrawl} was used for back-translations, see section \ref{pseudo} and \ref{preprocessing} for details.
+
+\subsection{Selecting pseudo in-domain training data}
+\label{pseudo}
+
+In order to reduce the amount of training data and possibly improve domain-adaptation effects, we decided to select data that seems to match the domain of TED talks based on Moore-Lewis filtering \cite{Moore:2010:ISL:1858842.1858883}. For the German-English pair, no parallel data filtering was performed, as the total number of training sentences was smaller than 20M. 
+
+We used the TED talk data from WIT3 as seed data to create the in-domain language model and a matching amount of randomly chosen out-of-domain data for the contrasting language model. For parallel data we filtered based on the English half only, for monolingual data we filtered using the respective language. 
+
+Prior to filtering, the data was tokenized and true-cased; to avoid issues with out-of-domain words, subword units \cite{DBLP:journals/corr/SennrichHB15} were applied for filtering. Subword units were computed on a small subset of the to-be-filtered data. Preprocessing was later reversed, the produced true-casing model and subwords symbols were not reused in further steps; we trained these models from scratch from the final data used for training as described in the next section. 
+
+\begin{table}[h]
+ \begin{tabular}{cccrr} \toprule
+  Lang. & Total & Selected & Avg. score & Sel. score \\ \midrule
+  de-en & 18M & 18M & 0.3753 & 0.3753 \\
+  fr-en & 87M & 20M & 0.5979 & 0.0800 \\ \bottomrule
+ \end{tabular}
+ \caption{Selected parallel data. The average score is the average cross-entropy score before selection across the total number of sentences, the selected score is the average cross-entropy over the selected 20M segments. The lower the more in-domain.}\label{filter1}
+\end{table}
+
+\begin{table}[h] \centering
+ \begin{tabular}{cccrr} \toprule
+  Lang. & Total & Selected & Avg. score & Sel. score \\ \midrule
+  de & 2.9G & 20M & 0.4639 & -0.0935 \\
+  en & 3.0G & 20M & 0.3797 & -0.0394 \\ 
+  fr & 3.0G & 20M & 0.4403 & -0.0185 \\ \bottomrule
+ \end{tabular}
+ \caption{Selected monolingual data. Interpretation of figures is the same as for parallel data.}\label{filter2}
+\end{table}
+
+As seen in Tables \ref{filter1} and \ref{filter2}, the average cross-entropy scores with regard to the TED seed language model decreases significantly after filtering, indicating higher similarity to actual in-domain data. 
+
+\subsection{Preprocessing and subword units}
+\label{preprocessing}
+
+Training data has been tokenized with the Moses tokenizer and true-cased. 
+To avoid the large-vocabulary problem in NMT models \cite{44929}, we used byte-pair-encoding (BPE) to achieve open-vocabulary translation with a fixed vocabulary of subword symbols \cite{DBLP:journals/corr/SennrichHB15}. For all languages we set the number of subword units to 50,000. Segmentation into subword units was applied after any other preprocessing step. 
+During evaluation, subwords were reassembled, tokenization and true-casing were reversed. 
+
+\subsection{Back-translation}
+
+The positive impact of adding back-translated monolingual in-domain data to the actual parallel data has been demonstrated in \cite{DBLP:journals/corr/SennrichHB15a}. We back-translate the selected monolingual data due to time constraints with a phrase-based system. The parallel in-domain data as well as the parallel selected data have been used to train Moses baseline models. Monolingual files were split into pieces with $50,000$ lines each. The translation process has been accelerated using GNU parallel \cite{Tange2011a}. 
+
+\section{Neural translation systems}
+
+The neural machine translation system is an attentional encoder-decoder \cite{DBLP:journals/corr/BahdanauCB14}, which has been trained with Nematus  \cite{DBLP:conf/wmt/SennrichHB16}.
+We used mini-batches of size 40, a maximum sentence length of 50, word embeddings of size 500, and hidden layers of size 1024.
+We clipped the gradient norm to 1.0 \cite{DBLP:conf/icml/PascanuMB13}.
+Models were trained with Adam \cite{DBLP:journals/corr/KingmaB14}, reshuffling the training corpus between epochs. All models have been trained with scaling dropout over all GRU steps and with dropout over input embeddings \cite{DBLP:conf/wmt/SennrichHB16}, both with dropout probabilities of $0.1$.
+The models were trained until convergence, saving every $30,000$ iterations (mini-batches). 
+
+For training the general models we used the $20,000,000$ most in-domain parallel sentences from the out-of-domain parallel training data (or all of it if less data was available) and $20,000,000$ back-translated sentences from the domain-selected monolingual data. The in-domain TED data was oversampled $20$ times and also added to the full training data. 
+
+\subsection{Finetuning and ensembling}
+
+We performed the same finetuning and ensembling method for each language pair: starting with the best model trained on the complete data, we fine-tuned each model for three epochs on the TED in-domain data only and repeated this process five times. For each fine-tuning step we saved the best model according to the dev set. The resulting five models were ensembled to produce the final results. We observed slight improvements on the dev set with each additional fine-tuned model added to the ensemble. 
+
+\section{Results}
+
+\begin{table}[t]\centering
+\begin{tabular}{lcccc}\toprule
+ Translation & \multicolumn{2}{c}{Progress set 2015} & \multicolumn{2}{c}{Test set 2016} \\ 
+ direction  & BLEU & TER & BLEU & TER \\\midrule
+ de-en & 0.3383 & 0.4605 & 0.3256 & 0.4615 \\
+ en-de & 0.3042 & 0.5202 & 0.2734 & 0.5526 \\
+ en-fr & 0.3914 & 0.4445 & 0.3688 & 0.4602 \\
+ fr-en & 0.3969 & 0.4038 & 0.3756 & 0.4095 \\ \bottomrule
+\end{tabular}
+\caption{Results for the IWSLT TED translation task}\label{results}
+\end{table}
+
+The organizers of the shared task supplied the results listed in Table~\ref{results} for our submitted systems. 
+We are waiting for the complete rankings to assess the results in comparison to other submissions. 
+
+\section{Acknowledgments}
+This project has received funding from the European Union's Horizon 2020 research and innovation
+programme under grant agreement 688139 (SUMMA).
+
+\bibliography{references}
+\bibliographystyle{IEEEtran}
+
+
+\end{document}
