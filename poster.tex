@@ -1,0 +1,233 @@
+\documentclass[20pt,final]{beamer}
+
+\usepackage[orientation=portrait,size=a0,scale=1.27,debug]{beamerposter}
+%\usetheme[iccs,nonav]{infposter}
+\usetheme[nonav]{infposter}
+
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{arrows,arrows,positioning,shapes}
+\usepackage{pgfplots}
+\usepackage{fixltx2e}
+\usepackage{bm}
+
+\makeatletter
+
+\makeatother
+\usepackage{xspace}
+
+\newcommand{\blockheading}[1]{\begin{center} \rule[-0.3cm]{0cm}{2.0cm} \Large #1 \vspace*{0.2cm} \end{center}}
+\newcommand{\blockbegin}{\vspace{1em}\large}
+\newcommand{\blockend}{\vspace*{0.2ex}}
+\newcommand{\interblockspace}{\vspace{0.5em}}
+
+\newcommand\bleu{\textsc{bleu}\xspace}
+\newcommand\BLEU{\textsc{Bleu}\xspace}
+\newcommand{\MGIZA}{{MGIZA\nolinebreak[4]\hspace{-.025em}\raisebox{.2ex}{\small\bf++}}\xspace}
+
+\usepackage{natbib}
+\usepackage{array}
+
+\setbeamerfont{normal text}{size=\Large}
+
+\let\oldframe\frame
+\renewcommand{\frame}{%
+\oldframe
+\let\olditemize\itemize
+\renewcommand\itemize{\olditemize\addtolength{\itemsep}{12pt}}%
+}
+
+\date{}
+
+\extralogo{eushield-fullcolour.ps}
+
+\begin{document}
+
+\begin{frame}{}
+
+\begin{columns}[t]
+
+\begin{column}{.45\linewidth}
+
+  \begin{block}{\blockheading{Overview}}
+    \blockbegin
+    \centerline{Neural MT systems using attentional encoder-decoder}
+    \vspace*{0.5ex}
+    \begin{center}
+      \fcolorbox{white}{white}{\framebox[32cm]{
+      \begin{minipage}[b]{0.75\linewidth}
+        \addtolength\rightmargin{0.5em}%
+        \vspace*{0.5ex}
+        \begin{itemize}
+        \item MT Tasks for TED talks
+        \item English $\longleftrightarrow$ German
+        \item English $\longleftrightarrow$ French
+        \item Filtered all data sets towards the task domain
+        \item Back-translation to use in-domain monolingual data
+        \end{itemize}
+        \vspace*{1ex}
+      \end{minipage}
+      }}
+    \end{center}
+    \centerline{All systems trained using open-source Nematus toolkit}
+    %\vspace*{-0.4ex}
+    \vskip 5mm
+    \blockend
+  \end{block}
+
+    \vskip 50mm
+
+  \begin{block}{\blockheading{Baseline Training Data}}
+    \blockbegin
+    \begin{itemize}
+      \item Amount of available data a lot larger than previous years
+    \end{itemize}
+
+   \begin{center}
+      \fcolorbox{white}{white}{\framebox[28cm]{
+     {\setlength{\tabcolsep}{0.5em}
+      \begin{tabular}{l|rr} 
+      Corpus & de$\rightarrow$en & fr$\rightarrow$en \\
+      \hline
+       WIT3 (in-domain)  & 0.2M & 0.2M \\ \hline 
+       Commoncrawl  & 2.3M & 3.2M\\
+       Europarl v7  & 1.9M & 2.0M \\
+       Giga Fr-En  & -- & 22.5M \\
+       News Commentary v11  & 0.2M & 0.2M \\
+       Opensubtitles 2016  & 13.4M & 33.5M\\ 
+       United Nations v1.0  & -- & 25.8M \\
+      \end{tabular}
+
+     }
+    }}
+     \\
+    \vskip 5mm
+      Admissible parallel corpora used for training, with number of segments per language pair
+    \end{center}
+
+
+    \blockend
+  \end{block}
+
+    \vskip 50mm
+
+  \begin{block}{\blockheading{Data Selection}}
+    \blockbegin
+    \begin{itemize}
+      \item Goal: Reduce amount of training data and domain adaptation
+      \item Use Moore-Lewis filtering
+      \item In domain set: WIT2
+      \item Out of domain: randomly chosen out of domain sentences
+    \end{itemize}
+
+   \begin{center}
+      \fcolorbox{white}{white}{\framebox[28cm]{
+     {\setlength{\tabcolsep}{0.5em}
+      \begin{tabular}{c|ccrr} 
+  Lang. & Total & Selected & Avg. score & Sel. score \\ 
+  de-en & 18M & 18M & 0.3753 & 0.3753 \\
+  fr-en & 87M & 20M & 0.5979 & 0.0800 \\ 
+      \end{tabular}
+     }
+    }}
+     \\
+    \vskip 5mm
+Selected parallel data. The average cross-entropy score before selection across the total number of sentences. The selected score is the average cross-entropy over the selected 20M segments. The lower the more in-domain.
+    \end{center}
+
+   \begin{center}
+      \fcolorbox{white}{white}{\framebox[28cm]{
+     {\setlength{\tabcolsep}{0.5em}
+      \begin{tabular}{c|ccrr} 
+  Lang. & Total & Selected & Avg. score & Sel. score \\ \hline
+  de & 2.9G & 20M & 0.4639 & -0.0935 \\
+  en & 3.0G & 20M & 0.3797 & -0.0394 \\ 
+  fr & 3.0G & 20M & 0.4403 & -0.0185 \\ 
+      \end{tabular}
+     }
+    }}
+     \\
+    \vskip 5mm
+      Selected monolingual data. The average cross-entropy scores with regard to the TED seed language model decreases significantly after filtering.
+    \end{center}
+
+
+    \blockend
+  \end{block}
+
+\end{column}
+
+\begin{column}{.45\linewidth}
+
+
+
+  \begin{block}{\blockheading{Setup}}
+    \blockbegin
+      \begin{itemize}
+      \item Back-translated monolingual data using Moses 
+      \item Segmentation: Byte Pair Encoding with 50,000 vocabulary
+      \item Minibatch side: 40
+      \item Maximun sentence length: 50
+      \item Word embeddings size: 500
+      \item Hidden layer size: 1024
+      \item Trained with Adam
+      \item Used scaling dropout over all GRU steps and over input embeddings. Dropout probability: $0.1$
+      \item General models: used 20M most in-domain parallel sentences from the out-of-domain parallel training data. Plus we used 20M back-translated sentences from the domain-selected monolingual data. 
+      \item The TED data was oversampled 20 times and added to the full training set. 
+      \item We finetuned each model on 3 epochs of the TED in-domain data and we repeated this 5 times.
+      \item The resulting 5 models are combined in an ensemble to produce the final results. 
+      \end{itemize}
+      \vskip 0.2cm
+
+    \blockend
+  \end{block}
+
+
+    \vskip 70mm
+
+
+
+  \begin{block}{\blockheading{Evaluation Results}}
+    \blockbegin
+
+   \begin{center}
+      \fcolorbox{white}{white}{\framebox[28cm]{
+     {\setlength{\tabcolsep}{0.5em}
+\begin{tabular}{lcccc}
+ Translation & \multicolumn{2}{c}{Progress set 2015} & \multicolumn{2}{c}{Test set 2016} \\ 
+ direction  & BLEU & TER & BLEU & TER \\\hline
+ de-en & 0.3383 & 0.4605 & 0.3256 & 0.4615 \\
+ en-de & 0.3042 & 0.5202 & 0.2734 & 0.5526 \\
+ en-fr & 0.3914 & 0.4445 & 0.3688 & 0.4602 \\
+ fr-en & 0.3969 & 0.4038 & 0.3756 & 0.4095 \\ 
+\end{tabular}
+     }
+    }}
+     \\
+    \vskip 5mm
+Results for the IWSLT TED translation task
+    \end{center}
+
+    
+    \blockend
+  \end{block}
+
+    \vskip 70mm
+
+  \begin{block}{\blockheading{Links}}
+  \blockbegin
+  \begin{description}
+  \item[Code] \url{https://github.com/rsennrich/nematus}
+  \item[Fast decoding] \url{https://github.com/emjotde/amunmt}
+  \end{description}
+  \blockend
+  \end{block}
+
+\end{column}
+
+\end{columns}
+
+\vfill
+\end{frame}
+
+\end{document}
